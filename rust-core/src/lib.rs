@@ -42,6 +42,16 @@ pub struct DocumentAnalysis {
 
 pub struct MarkdownLatexEngine;
 
+fn preview_text(text: &str, max_chars: usize) -> String {
+    let mut chars = text.chars();
+    let truncated: String = chars.by_ref().take(max_chars).collect();
+    if chars.next().is_some() {
+        format!("{}...", truncated)
+    } else {
+        truncated
+    }
+}
+
 impl MarkdownLatexEngine {
     pub fn analyze(content: &str) -> DocumentAnalysis {
         let lines: Vec<&str> = content.lines().collect();
@@ -100,11 +110,7 @@ impl MarkdownLatexEngine {
             for cap in display_math_re.captures_iter(line) {
                 if let Some(m) = cap.get(1) {
                     let formula_text = m.as_str().trim().to_string();
-                    let preview = if formula_text.len() > 60 {
-                        format!("{}...", &formula_text[..60])
-                    } else {
-                        formula_text.clone()
-                    };
+                    let preview = preview_text(&formula_text, 60);
                     formulas.push(LatexFormula {
                         raw: formula_text,
                         is_display: true,
@@ -120,11 +126,7 @@ impl MarkdownLatexEngine {
             if let Some(m) = cap.get(1) {
                 let formula_text = m.as_str().trim().to_string();
                 if !formulas.iter().any(|f| f.raw == formula_text && f.is_display) {
-                    let preview = if formula_text.len() > 60 {
-                        format!("{}...", &formula_text[..60])
-                    } else {
-                        formula_text.clone()
-                    };
+                    let preview = preview_text(&formula_text, 60);
                     formulas.push(LatexFormula {
                         raw: formula_text,
                         is_display: true,
@@ -143,11 +145,7 @@ impl MarkdownLatexEngine {
                 if let Some(m) = cap.get(1) {
                     let formula_text = m.as_str().trim().to_string();
                     if !formula_text.is_empty() {
-                        let preview = if formula_text.len() > 50 {
-                            format!("{}...", &formula_text[..50])
-                        } else {
-                            formula_text.clone()
-                        };
+                        let preview = preview_text(&formula_text, 50);
                         formulas.push(LatexFormula {
                             raw: formula_text,
                             is_display: false,
@@ -299,5 +297,18 @@ $$\mathbf{r} = (\sin\theta\cos\phi, \sin\theta\sin\phi, \cos\theta)$$
         assert_eq!(analysis.formulas.len(), 3);
         assert_eq!(analysis.stats.display_formula_count, 2);
         assert_eq!(analysis.stats.inline_formula_count, 1);
+    }
+
+    #[test]
+    fn test_unicode_formula_preview_does_not_panic() {
+        let md = "# Тест\n\n$$\n\\text{Скорость света в вакууме} = c = 299792458 \\text{ метров в секунду}\n$$\n\nИнлайн: $\\text{энергия покоя тела} = mc^2 \\text{ и ещё немного текста}$ конец.\n";
+        let analysis = MarkdownLatexEngine::analyze(md);
+        assert_eq!(analysis.title, "Тест");
+        assert!(analysis
+            .formulas
+            .iter()
+            .filter(|f| f.is_display)
+            .any(|f| f.preview.ends_with("...")));
+        assert!(analysis.formulas.iter().all(|f| f.preview.chars().count() <= 63));
     }
 }
