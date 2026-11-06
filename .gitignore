@@ -1,0 +1,19 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+app/build/
+target/
+rust-core/target/
+*.hprof
+
+# Native libraries generated at build time
+app/src/main/jniLibs/
+
+# Checkpoint diffs can be kept locally
+.git/agent-checkpoints/
