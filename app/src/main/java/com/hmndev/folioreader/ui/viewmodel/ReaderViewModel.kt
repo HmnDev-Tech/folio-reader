@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
@@ -77,10 +78,13 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
-            _uiState.value = _uiState.value.copy(
-                shelf = sampleDocs,
-                isLoading = false
-            )
+            _uiState.update { state ->
+                if (state.shelf.isEmpty()) {
+                    state.copy(shelf = sampleDocs, isLoading = false)
+                } else {
+                    state.copy(isLoading = false)
+                }
+            }
         }
     }
 
@@ -114,7 +118,9 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 if (content.isNotBlank()) {
-                    val analysis = MarkdownLatexProcessor.analyzeDocument(content)
+                    val analysis = withContext(Dispatchers.IO) {
+                        MarkdownLatexProcessor.analyzeDocument(content)
+                    }
                     val newDoc = FolioDocument(
                         id = UUID.randomUUID().toString(),
                         title = analysis.title,
